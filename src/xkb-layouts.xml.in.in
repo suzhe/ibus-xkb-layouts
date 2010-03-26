@@ -1,0 +1,15 @@
+<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<component>
+        <name>org.freedesktop.IBus.XKBLayouts</name>
+        <description>XKB Layouts Component</description>
+        <exec>${libexecdir}/ibus-engine-xkb-layouts --ibus</exec>
+        <version>@VERSION@</version>
+        <author>James Su &lt;james.su@gmail.com&gt;</author>
+        <license>Apache License 2.0</license>
+        <homepage>http://github.com/suzhe/ibus-xkb-layouts</homepage>
+        <textdomain>ibus-xkb-layouts</textdomain>
+        <observed-paths>
+                <path>@XKB_RULES_XML_FILE@</path>
+        </observed-paths>
+        <engines exec=\"${libexecdir}/ibus-engine-xkb-layouts --xml\" />
+</component>
