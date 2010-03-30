@@ -7,14 +7,13 @@ ibus_engine_xkb_layouts_SOURCES = \
 	xkbutil.c \
 	xkbutil.h \
 	$(NULL)
-ibus_engine_xkb_layouts_CPPFLAGS = \
-	$(PREDEFINED_MACROS) \
-	$(NULL)
 ibus_engine_xkb_layouts_CFLAGS = \
 	@IBUS_CFLAGS@ \
+	@LIBXKLAVIER_CFLAGS@ \
 	$(NULL)
 ibus_engine_xkb_layouts_LDFLAGS = \
 	@IBUS_LIBS@ \
+	@LIBXKLAVIER_LIBS@ \
 	$(NULL)
 
 component_DATA = \

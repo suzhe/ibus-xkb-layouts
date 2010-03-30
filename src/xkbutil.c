@@ -1,17 +1,16 @@
 #include <string.h>
 #include <glib.h>
+#include <X11/Xlib.h>
+#include <libxklavier/xklavier.h>
+
 #include "xkbutil.h"
 
-#ifndef XKB_RULES_XML_FILE
-#define XKB_RULES_XML_FILE "/usr/share/X11/xkb/rules/evdev.xml"
-#endif
-
 static IBusEngineDesc *
-ibus_xkb_engine_new (gchar    *layout,
-                     gchar    *layout_desc,
-                     gchar    *variant,
-                     gchar    *variant_desc,
-                     gchar    *language)
+ibus_xkb_engine_new (const gchar *layout,
+                     const gchar *layout_desc,
+                     const gchar *variant,
+                     const gchar *variant_desc,
+                     const gchar *language)
 {
     IBusEngineDesc *engine;
     gchar *engine_name = NULL;
@@ -53,155 +52,79 @@ ibus_xkb_engine_new (gchar    *layout,
     return engine;
 }
 
-static GList *
-ibus_xkb_create_engines (GList *engines,
-                         gchar *layout,
-                         gchar *layout_desc,
-                         gchar *variant,
-                         gchar *variant_desc,
-                         GList *langs)
+struct ListEnginesCallbackData
 {
-    GList *l;
-    for (l = langs; l != NULL; l = l->next) {
-        engines = g_list_prepend (engines, ibus_xkb_engine_new (layout, layout_desc, variant, variant_desc, (gchar *) l->data));
-    }
+    GList *engines;
+    const gchar *language;
+};
 
-    return engines;
+static void
+ibus_xkb_layout_proc (XklConfigRegistry   *registry,
+                      const XklConfigItem *item,
+                      const XklConfigItem *subitem,
+                      gpointer data)
+{
+    struct ListEnginesCallbackData *callback_data = (struct ListEnginesCallbackData *) data;
+
+    if (subitem) {
+        callback_data->engines = g_list_prepend (callback_data->engines, ibus_xkb_engine_new (
+            item->name, item->description, subitem->name, subitem->description, callback_data->language));
+    }
+    else {
+        callback_data->engines = g_list_prepend (callback_data->engines, ibus_xkb_engine_new (
+            item->name, item->description, "", "", callback_data->language));
+    }
 }
 
 static void
-ibus_xkb_parse_config_item (XMLNode  *node,
-                            gchar   **name,
-                            gchar   **desc,
-                            GList   **langs)
+ibus_xkb_language_proc (XklConfigRegistry   *registry,
+                        const XklConfigItem *item,
+                        gpointer data)
 {
-    GList *p = NULL;
-    for (p = node->sub_nodes; p != NULL; p = p->next) {
-        XMLNode *sub_node = (XMLNode *) p->data;
-        if (g_strcmp0 (sub_node->name, "name") == 0) {
-            *name = sub_node->text;
-        }
-        else if (g_strcmp0 (sub_node->name, "description") == 0) {
-            *desc = sub_node->text;
-        }
-        else if (g_strcmp0 (sub_node->name, "languageList") == 0) {
-            GList *l = NULL;
-            for (l = sub_node->sub_nodes; l != NULL; l = l->next) {
-                XMLNode *lang_node = (XMLNode *) l->data;
-                if (g_strcmp0 (lang_node->name, "iso639Id") == 0) {
-                    *langs = g_list_prepend (*langs, lang_node->text);
-                }
-            }
-        }
-    }
-    if (*langs) {
-        *langs = g_list_reverse (*langs);
-    }
-}
+    struct ListEnginesCallbackData *callback_data = (struct ListEnginesCallbackData *) data;
 
-static GList *
-ibus_xkb_parse_variant_list (GList *engines,
-                             XMLNode *node,
-                             gchar *layout_name,
-                             gchar *layout_desc,
-                             GList *layout_langs)
-{
-    GList *p = NULL;
-    for (p = node->sub_nodes; p != NULL; p = p->next) {
-        XMLNode *variant = (XMLNode *) p->data;
-        if (g_strcmp0 (variant->name, "variant") == 0 && variant->sub_nodes) {
-            XMLNode *config = (XMLNode *) variant->sub_nodes->data;
-            if (g_strcmp0 (config->name, "configItem") == 0) {
-                gchar *name = NULL;
-                gchar *desc = NULL;
-                GList *langs = NULL;
+    callback_data->language = item->name;
 
-                ibus_xkb_parse_config_item (config, &name, &desc, &langs);
-
-                if (name && desc && (langs || layout_langs)) {
-                    engines = ibus_xkb_create_engines (engines, layout_name, layout_desc, name, desc,
-                                                       langs ? langs : layout_langs);
-                }
-
-                g_list_free (langs);
-            }
-        }
-    }
-
-    return engines;
-}
-
-static GList *
-ibus_xkb_parse_layout (GList   *engines,
-                       XMLNode *layout)
-{
-    gchar *name = NULL;
-    gchar *desc = NULL;
-    GList *langs = NULL;
-    GList *p = NULL;
-
-    for (p = layout->sub_nodes; p != NULL; p = p->next) {
-        XMLNode *sub_node = (XMLNode *) p->data;
-        if (g_strcmp0 (sub_node->name, "configItem") == 0 && !name) {
-            ibus_xkb_parse_config_item (sub_node, &name, &desc, &langs);
-
-            if (name && desc && langs) {
-                engines = ibus_xkb_create_engines (engines, name, desc, "", "", langs);
-            }
-        }
-        else if (g_strcmp0 (sub_node->name, "variantList") == 0 && name) {
-            engines = ibus_xkb_parse_variant_list (engines, sub_node, name, desc, langs);
-        }
-    }
-
-    g_list_free (langs);
-
-    return engines;
-}
-
-static GList *
-ibus_xkb_parse_layout_list (GList   *engines,
-                            XMLNode *layout_list)
-{
-    GList *p = NULL;
-    for (p = layout_list->sub_nodes; p != NULL; p = p->next) {
-        XMLNode *layout = (XMLNode *) p->data;
-
-        if (g_strcmp0 (layout->name, "layout") == 0) {
-           engines = ibus_xkb_parse_layout(engines, layout);
-        }
-    }
-
-    return engines;
+    xkl_config_registry_foreach_language_variant (registry, item->name, ibus_xkb_layout_proc, data);
 }
 
 GList *
 ibus_xkb_list_engines (void)
 {
-    GList *engines = NULL;
-    GList *p = NULL;
-    XMLNode *xkb_rules_xml = ibus_xml_parse_file (XKB_RULES_XML_FILE);
+    XklEngine *xkl_engine = NULL;
+    XklConfigRegistry *xkl_registry = NULL;
+    Display *display = NULL;
+    struct ListEnginesCallbackData callback_data = { NULL, NULL };
 
-    if (!xkb_rules_xml) {
+    display = XOpenDisplay (NULL);
+    if (display == NULL) {
         return NULL;
     }
 
-    if (g_strcmp0 (xkb_rules_xml->name, "xkbConfigRegistry") != 0) {
-        g_warning ("File %s is not a valid XKB rules xml file.", XKB_RULES_XML_FILE);
-        ibus_xml_free (xkb_rules_xml);
-        return NULL;
+    xkl_engine = xkl_engine_get_instance (display);
+    if (xkl_engine == NULL) {
+        goto out;
     }
 
-    for (p = xkb_rules_xml->sub_nodes; p != NULL; p = p->next) {
-        XMLNode *sub_node = (XMLNode *) p->data;
-
-        if (g_strcmp0 (sub_node->name, "layoutList") == 0) {
-           engines = ibus_xkb_parse_layout_list (engines, sub_node);
-        }
+    xkl_registry = xkl_config_registry_get_instance (xkl_engine);
+    if (!xkl_registry || !xkl_config_registry_load (xkl_registry, TRUE)) {
+        goto out;
     }
 
-    ibus_xml_free (xkb_rules_xml);
-    return g_list_reverse (engines);
+    xkl_config_registry_foreach_language(xkl_registry, ibus_xkb_language_proc, &callback_data);
+
+out:
+    if (xkl_registry) {
+        g_object_unref (xkl_registry);
+    }
+    if (xkl_engine) {
+        g_object_unref (xkl_engine);
+    }
+    if (display) {
+        XCloseDisplay (display);
+    }
+
+    return callback_data.engines ? g_list_reverse (callback_data.engines) : NULL;
 }
 
 IBusComponent *

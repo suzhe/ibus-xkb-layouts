@@ -9,7 +9,7 @@
         <homepage>http://github.com/suzhe/ibus-xkb-layouts</homepage>
         <textdomain>ibus-xkb-layouts</textdomain>
         <observed-paths>
-                <path>@XKB_RULES_XML_FILE@</path>
+            <path>@XKB_BASE@/rules/</path>
         </observed-paths>
         <engines exec=\"${libexecdir}/ibus-engine-xkb-layouts --xml\" />
 </component>

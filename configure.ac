@@ -18,21 +18,19 @@ AC_HEADER_STDC
 
 PKG_PROG_PKG_CONFIG([0.20])
 
-AC_ARG_WITH([xkb-rules-xml],
-            AC_HELP_STRING([--with-xkb-rules-xml=${datadir}/X11/xkb/rules/evdev.xml],
-                           [Specify the XKB rules xml file to be used.]),
-            [XKB_RULES_XML_FILE=$withval],
-            [XKB_RULES_XML_FILE="/usr/share/X11/xkb/rules/evdev.xml"])
+AC_ARG_WITH([xkb-base],
+            AC_HELP_STRING([--with-xkb-base=${datadir}/X11/xkb],
+                           [XKB base path]),
+            [XKB_BASE=$withval],
+            [XKB_BASE="/usr/share/X11/xkb"])
 
-AC_CHECK_FILE([$XKB_RULES_XML_FILE],[],[AC_MSG_ERROR([$XKB_RULES_XML_FILE is not available.])])
-
-PREDEFINED_MACROS="-DXKB_RULES_XML_FILE=\\\"$XKB_RULES_XML_FILE\\\""
-AC_SUBST([PREDEFINED_MACROS])
-AC_SUBST([XKB_RULES_XML_FILE])
-AC_SUBST([datarootdir])
+AC_SUBST([XKB_BASE])
 
 # check ibus
 PKG_CHECK_MODULES(IBUS, [ibus-1.0 >= 1.3.0])
+
+# check libxklavier
+PKG_CHECK_MODULES(LIBXKLAVIER, [libxklavier >= 4.0])
 
 # OUTPUT files
 AC_CONFIG_FILES([Makefile
