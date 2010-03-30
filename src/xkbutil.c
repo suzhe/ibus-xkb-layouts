@@ -42,7 +42,7 @@ ibus_xkb_engine_new (gchar    *layout,
     /* set default rank to 0 */
     engine->rank = 0;
 
-    if (g_strcmp0(layout, "us") == 0 && (!layout_desc || !*layout_desc)) {
+    if (g_strcmp0(layout, "us") == 0 && (!variant || !*variant)) {
         engine->rank = 100;
     }
 
