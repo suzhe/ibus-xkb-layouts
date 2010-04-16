@@ -36,9 +36,6 @@ ibus_xkb_engine_new (gchar    *layout,
                                    "",
                                    engine_layout ? engine_layout : layout);
 
-    /* It's a keyboard layout */
-    engine->is_layout = TRUE;
-
     /* set default rank to 0 */
     engine->rank = 0;
 
